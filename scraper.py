@@ -9,9 +9,7 @@ import urllib2
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-
-#### FUNCTIONS 1.1
-import requests   #import requests for validating urls
+#### FUNCTIONS 1.0
 
 def validateFilename(filename):
     filenameregex = '^[a-zA-Z0-9]+_[a-zA-Z0-9]+_[a-zA-Z0-9]+_[0-9][0-9][0-9][0-9]_[0-9QY][0-9]$'
@@ -39,19 +37,19 @@ def validateFilename(filename):
 
 def validateURL(url):
     try:
-        r = requests.get(url)
+        r = urllib2.urlopen(url)
         count = 1
-        while r.status_code == 500 and count < 4:
+        while r.getcode() == 500 and count < 4:
             print ("Attempt {0} - Status code: {1}. Retrying.".format(count, r.status_code))
             count += 1
-            r = requests.get(url)
+            r = urllib2.urlopen(url)
         sourceFilename = r.headers.get('Content-Disposition')
 
         if sourceFilename:
             ext = os.path.splitext(sourceFilename)[1].replace('"', '').replace(';', '').replace(' ', '')
         else:
             ext = os.path.splitext(url)[1]
-        validURL = r.status_code == 200
+        validURL = r.getcode() == 200
         validFiletype = ext.lower() in ['.csv', '.xls', '.zip', '.xlsx', '.pdf']
         return validURL, validFiletype
     except:
@@ -85,9 +83,9 @@ def convert_mth_strings ( mth_string ):
     return mth_string
 
 #### VARIABLES 1.0
-
-entity_id = "NHTRTVFT_5BPNFT_gov"
-url = "http://www.5boroughspartnership.nhs.uk/financial-transparency-reports/"
+import urllib
+entity_id = "NFTRWE_UHOLNT_gov"
+url = "http://www.library.leicestershospitals.nhs.uk/pubscheme/Documents/Forms/AllItems.aspx?RootFolder=%2Fpubscheme%2FDocuments%2FWhat%20we%20spend%20and%20how%20we%20spend%20it%2FExpenditure&FolderCTID=0x012000EF102AD8653F8A4D99A18F23F62059BD&View={3A4C349F-926F-4F7B-8382-D8295CCFA2ED}"
 errors = 0
 data = []
 
@@ -99,15 +97,17 @@ soup = BeautifulSoup(html, 'lxml')
 
 #### SCRAPE DATA
 
-
-blocks = soup.find('div', 'related_docs').find_all('a')
+blocks = soup.find_all('div', 'ms-vb itx')
 for block in blocks:
-    url = 'http://www.5boroughspartnership.nhs.uk' + block['href']
-    csvMth = block.text.split()[0][:3]
-    csvYr = block.text.split()[-1]
+    link = block.find('a')
+    url = 'http://www.library.leicestershospitals.nhs.uk' + urllib.quote(link['href'])
+    csvMth = link.text.strip()[:3]
+    csvYr = link.text.strip().split()[1]
+    if 'Ite' in csvMth:
+        csvMth = 'Q0'
+        csvYr = '2010'
     csvMth = convert_mth_strings(csvMth.upper())
     data.append([csvYr, csvMth, url])
-
 
 #### STORE DATA 1.0
 
